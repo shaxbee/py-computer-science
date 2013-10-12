@@ -12,6 +12,9 @@ def add_edge(graph, left, right, cost):
                 
 def make_graph(source):
     """
+    Make graph out of (from, to, cost) tuples.
+    
+    Example:
     >>> make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
     {1: [edge_cost(id=2, cost=10), edge_cost(id=3, cost=30)], 2: [edge_cost(id=3, cost=15)]}
     """
@@ -24,6 +27,9 @@ def make_graph(source):
     
 def reverse_graph(source):
     """
+    Reverse direction of graph
+    
+    Example:
     >>> reverse_graph(make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)]))
     {2: [edge_cost(id=1, cost=10)], 3: [edge_cost(id=1, cost=30), edge_cost(id=2, cost=15)]}
     """
@@ -41,6 +47,7 @@ def dijkstra_kernel(graph, start, end, previous):
         cost, id = heappop(queue)
         yield edge_cost(id = id, cost = cost)
         
+        # destination reached
         if id == end:
             return
       
@@ -93,6 +100,7 @@ def bidirect_dijkstra(graph, start, end):
     fwd_kernel = dijkstra_kernel(graph, start, end, fwd_previous)
     bwd_kernel = dijkstra_kernel(reverse_graph(graph), end, start, bwd_previous)
     
+    # helper for finding intersection candidate
     def check_intersects(id, previous, cost):
         if id in previous:
             alt_cost = fwd_previous[id].cost + bwd_previous[id].cost
@@ -102,11 +110,7 @@ def bidirect_dijkstra(graph, start, end):
     intersection = None
     cost = float('inf')
     
-    for fwd, bwd in zip(fwd_kernel, bwd_kernel):
-        # break if any search reached target
-        #if fwd.id == end or bwd.id == start:
-        #    break
-        
+    for fwd, bwd in zip(fwd_kernel, bwd_kernel):        
         # check if there is better intersection
         intersection, cost = \
             check_intersects(fwd.id, bwd_previous, cost) or \
