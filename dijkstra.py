@@ -1,4 +1,5 @@
 from collections import namedtuple
+from functools import partial
 from heapq import heappush, heappop
 
 edge_cost = namedtuple('edge_cost', 'id cost')
@@ -39,6 +40,9 @@ def dijkstra_kernel(graph, start, end, previous):
     while queue:
         cost, id = heappop(queue)
         yield edge_cost(id = id, cost = cost)
+        
+        if id == end:
+            return
       
         for neighbour in graph[id]:
             alt_cost = cost + neighbour.cost
@@ -65,13 +69,58 @@ def dijkstra(graph, start, end):
     (25.0, [1, 2, 3])
     """
     previous = {}
+    
+    # keep visiting nodes till search is finished
     for id, cost in dijkstra_kernel(graph, start, end, previous):
-        if id == end:
-            path = list(backtrack(previous, id))
-            path.reverse()
-            return (cost, path)
-            
-if __name__ == "__main__":
-    graph = make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
-    dijkstra(graph, 1, 3)
+        pass
+
+    # if end node was reached
+    if id == end:
+        path = list(backtrack(previous, id))
+        path.reverse()
+        return (cost, path)
+
+def bidirect_dijkstra(graph, start, end):
+    """
+    >>> graph = make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
+    >>> bidirect_dijkstra(graph, 1, 3)
+    (25.0, [1, 2, 3])
+    """
+    
+    fwd_previous = {}
+    bwd_previous = {}
+    
+    fwd_kernel = dijkstra_kernel(graph, start, end, fwd_previous)
+    bwd_kernel = dijkstra_kernel(reverse_graph(graph), end, start, bwd_previous)
+    
+    def check_intersects(id, previous, cost):
+        if id in previous:
+            alt_cost = fwd_previous[id].cost + bwd_previous[id].cost
+            if alt_cost < cost:
+                return (id, alt_cost)
+    
+    intersection = None
+    cost = float('inf')
+    
+    for fwd, bwd in zip(fwd_kernel, bwd_kernel):
+        # break if any search reached target
+        #if fwd.id == end or bwd.id == start:
+        #    break
         
+        # check if there is better intersection
+        intersection, cost = \
+            check_intersects(fwd.id, bwd_previous, cost) or \
+            check_intersects(bwd.id, fwd_previous, cost) or \
+            (intersection, cost)
+        
+        # stop searching if current path is not improved
+        if cost < fwd.cost + bwd.cost:
+            break
+    
+    # if shortest path was found
+    if intersection is not None:
+        path = list(backtrack(fwd_previous, intersection))[1:]
+        path.reverse()
+        path.extend(backtrack(bwd_previous, intersection))
+        
+        return (cost, path)
