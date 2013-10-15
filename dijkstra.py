@@ -1,27 +1,21 @@
-from collections import namedtuple
 from functools import partial
+from collections import namedtuple, defaultdict
 from heapq import heappush, heappop
 
 edge_cost = namedtuple('edge_cost', 'id cost')
-                
-def add_edge(graph, left, right, cost):
-    if left not in graph:
-        graph[left] = []
-    
-    graph[left].append(edge_cost(id = right, cost = cost))
-                
+
 def make_graph(source):
     """
     Make graph out of (from, to, cost) tuples.
     
     Example:
     >>> make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
-    {1: [edge_cost(id=2, cost=10), edge_cost(id=3, cost=30)], 2: [edge_cost(id=3, cost=15)]}
+    defaultdict(<class 'list'>, {1: [edge_cost(id=2, cost=10), edge_cost(id=3, cost=30)], 2: [edge_cost(id=3, cost=15)]})
     """
-    graph = {}
+    graph = defaultdict(list)
     
-    for entry in source:
-        add_edge(graph, *entry)
+    for left, right, cost in source:
+        graph[left].append(edge_cost(id=right, cost=cost))
         
     return graph
     
@@ -31,26 +25,22 @@ def reverse_graph(source):
     
     Example:
     >>> reverse_graph(make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)]))
-    {2: [edge_cost(id=1, cost=10)], 3: [edge_cost(id=1, cost=30), edge_cost(id=2, cost=15)]}
+    defaultdict(<class 'list'>, {2: [edge_cost(id=1, cost=10)], 3: [edge_cost(id=1, cost=30), edge_cost(id=2, cost=15)]})
     """
-    reversed = {}
+    reversed = defaultdict(list)
     
     for left, edges in source.items():
         for right, cost in edges:
-            add_edge(reversed, right, left, cost)
+            reversed[right].append(edge_cost(id=left, cost=cost))
             
     return reversed
     
-def dijkstra_kernel(graph, start, end, previous):
+def dijkstra_kernel(graph, start, 	previous):
     queue = [(0.0, start)]
     while queue:
         cost, id = heappop(queue)
         yield edge_cost(id = id, cost = cost)
-        
-        # destination reached
-        if id == end:
-            return
-      
+       
         for neighbour in graph[id]:
             alt_cost = cost + neighbour.cost
             
@@ -78,8 +68,9 @@ def dijkstra(graph, start, end):
     previous = {}
     
     # keep visiting nodes till search is finished
-    for id, cost in dijkstra_kernel(graph, start, end, previous):
-        pass
+    for id, cost in dijkstra_kernel(graph, start, previous):
+        if id == end:
+            break
 
     # if end node was reached
     if id == end:
@@ -97,8 +88,8 @@ def bidirect_dijkstra(graph, start, end):
     fwd_previous = {}
     bwd_previous = {}
     
-    fwd_kernel = dijkstra_kernel(graph, start, end, fwd_previous)
-    bwd_kernel = dijkstra_kernel(reverse_graph(graph), end, start, bwd_previous)
+    fwd_kernel = dijkstra_kernel(graph, start, fwd_previous)
+    bwd_kernel = dijkstra_kernel(reverse_graph(graph), end, bwd_previous)
     
     # helper for finding intersection candidate
     def check_intersects(id, previous, cost):
