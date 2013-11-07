@@ -1,21 +1,27 @@
-from functools import partial
-from collections import namedtuple, defaultdict
+from future_builtins import zip
+from operator import itemgetter
+from collections import defaultdict
 from heapq import heappush, heappop
 
-edge_cost = namedtuple('edge_cost', 'id cost')
+def identity(value):
+    return value
 
-def make_graph(source):
+def make_graph(source, edge_factory=identity):
     """
-    Make graph out of (from, to, cost) tuples.
+    Make graph out of (from, to, *attributes) tuples using edge_factory.
+
+    :param edge_factory: factory for edge attributes
     
     Example:
     >>> make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
-    defaultdict(<class 'list'>, {1: [edge_cost(id=2, cost=10), edge_cost(id=3, cost=30)], 2: [edge_cost(id=3, cost=15)]})
+    defaultdict(<type 'list'>, {1: [(2, 10), (3, 30)], 2: [(3, 15)]})
     """
     graph = defaultdict(list)
     
-    for left, right, cost in source:
-        graph[left].append(edge_cost(id=right, cost=cost))
+    for edge in source:
+        left, right = edge[:2]
+        payload = edge_factory(*edge[2:])
+        graph[left].append((right, payload))
         
     return graph
     
@@ -25,97 +31,107 @@ def reverse_graph(source):
     
     Example:
     >>> reverse_graph(make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)]))
-    defaultdict(<class 'list'>, {2: [edge_cost(id=1, cost=10)], 3: [edge_cost(id=1, cost=30), edge_cost(id=2, cost=15)]})
+    defaultdict(<type 'list'>, {2: [(1, 10)], 3: [(1, 30), (2, 15)]})
     """
     reversed = defaultdict(list)
     
     for left, edges in source.items():
-        for right, cost in edges:
-            reversed[right].append(edge_cost(id=left, cost=cost))
+        for right, payload in edges:
+            reversed[right].append((left, payload))
             
     return reversed
     
-def dijkstra_kernel(graph, start, 	previous):
+def dijkstra_kernel(graph, start, previous, cost_fn):
     queue = [(0.0, start)]
+    previous.update({start: (None, 0.0, None)})
     while queue:
-        cost, id = heappop(queue)
-        yield edge_cost(id = id, cost = cost)
+        cost, left = heappop(queue)
+        yield left, cost
        
-        for neighbour in graph[id]:
-            alt_cost = cost + neighbour.cost
+        for right, payload in graph.get(left, []):
+            alt_cost = cost + cost_fn(payload)
             
             # if there was no cost associated or cost is lower
-            if id not in previous or alt_cost < previous[neighbour.id].cost:
-                heappush(queue, (alt_cost, neighbour.id))
-                previous[neighbour.id] = edge_cost(id = id, cost = alt_cost)
+            if right not in previous or alt_cost < previous[right][1]:
+                heappush(queue, (alt_cost, right))
+                previous[right] = (left, alt_cost, payload)
 
-def backtrack(previous, id):
+def backtrack(previous, start):
     """
-    >>> list(backtrack({3: edge_cost(id=2, cost=15), 2: edge_cost(id=1, cost=10)}, 3))
-    [3, 2, 1]
+    >>> list(backtrack({3: (2, 25, 15), 2: (1, 10, 10), 1: (None, 0.0, None)}, 3))
+    [(2, 3, 15), (1, 2, 10)]
     """
-    yield id
-    while id in previous:
-        id = previous[id].id
-        yield id
+    left = start
+    while True:
+        right, _, payload = previous[left]
+        if right is None:
+            break
+        yield right, left, payload
+        left = right
 
-def dijkstra(graph, start, end):
+def just_ids(source):
+    cost, edges = source
+    if not len(edges):
+        return (cost, [])
+    result = [left for left, right, _ in edges]
+    result.append(right)
+    return (cost, result)
+
+def dijkstra(graph, start, end, cost_fn=identity):
     """
     >>> graph = make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
-    >>> dijkstra(graph, 1, 3)
+    >>> just_ids(dijkstra(graph, 1, 3))
     (25.0, [1, 2, 3])
     """
     previous = {}
     
     # keep visiting nodes till search is finished
-    for id, cost in dijkstra_kernel(graph, start, previous):
+    for id, cost in dijkstra_kernel(graph, start, previous, cost_fn):
         if id == end:
             break
 
     # if end node was reached
     if id == end:
-        path = list(backtrack(previous, id))
-        path.reverse()
-        return (cost, path)
+        edges = list(backtrack(previous, id))
+        edges.reverse()
+        return (cost, edges)
 
-def bidirect_dijkstra(graph, start, end):
+def bidirect_dijkstra(graph, start, end, cost_fn=identity):
     """
-    >>> graph = make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
-    >>> bidirect_dijkstra(graph, 1, 3)
+    >>> graph = make_graph([(1, 2, 10.0), (2, 3, 15.0), (1, 3, 30.0)])
+    >>> just_ids(bidirect_dijkstra(graph, 1, 3))
     (25.0, [1, 2, 3])
     """
     
     fwd_previous = {}
     bwd_previous = {}
     
-    fwd_kernel = dijkstra_kernel(graph, start, fwd_previous)
-    bwd_kernel = dijkstra_kernel(reverse_graph(graph), end, bwd_previous)
-    
-    # helper for finding intersection candidate
-    def check_intersects(id, previous, cost):
-        if id in previous:
-            alt_cost = fwd_previous[id].cost + bwd_previous[id].cost
-            if alt_cost < cost:
-                return (id, alt_cost)
+    fwd_kernel = dijkstra_kernel(graph, start, fwd_previous, cost_fn)
+    bwd_kernel = dijkstra_kernel(reverse_graph(graph), end, bwd_previous, cost_fn)
     
     intersection = None
     cost = float('inf')
     
-    for fwd, bwd in zip(fwd_kernel, bwd_kernel):        
+    # helper for finding intersection candidate
+    def check_intersects(id, previous):
+        if id in previous:
+            alt_cost = fwd_previous[id][1] + bwd_previous[id][1]
+            if alt_cost < cost:
+                return (id, alt_cost)
+        return (None, float('inf'))
+    
+    for fwd, bwd in zip(fwd_kernel, bwd_kernel): 
         # check if there is better intersection
-        intersection, cost = \
-            check_intersects(fwd.id, bwd_previous, cost) or \
-            check_intersects(bwd.id, fwd_previous, cost) or \
-            (intersection, cost)
+        intersection, cost = min((intersection, cost), check_intersects(fwd[0], bwd_previous), check_intersects(bwd[0], fwd_previous), key=itemgetter(1))
         
         # stop searching if current path is not improved
-        if cost < fwd.cost + bwd.cost:
+        if cost < fwd[1] + bwd[1]:
             break
     
     # if shortest path was found
     if intersection is not None:
-        path = list(backtrack(fwd_previous, intersection))[1:]
-        path.reverse()
-        path.extend(backtrack(bwd_previous, intersection))
+        edges = list(backtrack(fwd_previous, intersection))
+        edges.reverse()
+        edges.extend((right, left, payload) for left, right, payload in backtrack(bwd_previous, intersection))
         
-        return (cost, path)
+        return (cost, edges)
