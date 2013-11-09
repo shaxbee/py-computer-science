@@ -11,9 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-.. automodule:: dijkstra
-   :members:
-   :undoc-members:
+   dijkstra
 
 Indices and tables
 ==================
