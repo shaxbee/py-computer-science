@@ -4,13 +4,19 @@ from collections import defaultdict
 from heapq import heappush, heappop
 
 def identity(value):
+    """
+    Identity mapping of single argument.
+    """
+
     return value
 
 def make_graph(source, edge_factory=identity):
     """
-    Make graph out of (from, to, *attributes) tuples using edge_factory.
+    Make graph out of list of edges.
 
+    :param source: list of tuples in form of (from, to, *payload)
     :param edge_factory: factory for edge attributes
+    :returns: adjacency list
     
     Example:
 
@@ -33,7 +39,9 @@ def make_graph(source, edge_factory=identity):
     
 def reverse_graph(source):
     """
-    Reverse direction of graph
+    Reverse direction of graph.
+
+    :param source: adjacency list of graph
     
     Example:
     >>> reverse_graph(make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)]))
@@ -48,6 +56,17 @@ def reverse_graph(source):
     return reversed
     
 def dijkstra_kernel(graph, start, previous, cost_fn):
+    """
+    Generator for dijkstra search.
+
+    Each iteration yields visited node id and cost to reach it from start node.
+
+    :param graph: adjacency list of graph
+    :param start: start node id
+    :param previous: dictionary for storing settled nodes
+    :param cost_fn: cost function applied for each edge, must be stateless
+    """
+
     queue = [(0.0, start)]
     previous.update({start: (None, 0.0, None)})
     while queue:
@@ -64,8 +83,15 @@ def dijkstra_kernel(graph, start, previous, cost_fn):
 
 def backtrack(previous, start):
     """
-    >>> list(backtrack({3: (2, 25, 15), 2: (1, 10, 10), 1: (None, 0.0, None)}, 3))
-    [(2, 3, 15), (1, 2, 10)]
+    Collect edges visited by dijkstra kernel.
+
+    :param previous: dictionary of settled nodes
+    :param start: node id to start backtracking from
+    :returns: reversed list of edges
+
+    Example:
+        >>> list(backtrack({3: (2, 25, 15), 2: (1, 10, 10), 1: (None, 0.0, None)}, 3))
+        [(2, 3, 15), (1, 2, 10)]
     """
     left = start
     while True:
@@ -76,6 +102,15 @@ def backtrack(previous, start):
         left = right
 
 def just_ids(source):
+    """
+    Convert dijkstra result to contain only node ids.
+
+    :param source: (cost, edges) tuple returned by dijkstra search
+
+    Example:
+        >>> just_ids((25.0, [(1, 2, 10.0), (2, 3, 15.0)]))
+        (25.0, [1, 2, 3])
+    """
     cost, edges = source
     if not len(edges):
         return (cost, [])
@@ -85,9 +120,17 @@ def just_ids(source):
 
 def dijkstra(graph, start, end, cost_fn=identity):
     """
-    >>> graph = make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
-    >>> just_ids(dijkstra(graph, 1, 3))
-    (25.0, [1, 2, 3])
+    Dijkstra search on directed graph.
+
+    :param graph: adjacency list of graph
+    :param start: node to start search at
+    :param end: final node
+    :param cost_fn: cost function applied on edges
+
+    Example:
+        >>> graph = make_graph([(1, 2, 10.0), (2, 3, 15.0), (1, 3, 30.0)])
+        >>> dijkstra(graph, 1, 3)
+        (25.0, [(1, 2, 10.0), (2, 3, 15.0)])
     """
     previous = {}
     
