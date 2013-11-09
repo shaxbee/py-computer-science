@@ -19,7 +19,6 @@ def make_graph(source, edge_factory=identity):
     :returns: adjacency list
     
     Example:
-
        >>> make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
        defaultdict(<type 'list'>, {1: [(2, 10), (3, 30)], 2: [(3, 15)]})
 
@@ -44,8 +43,8 @@ def reverse_graph(source):
     :param source: adjacency list of graph
     
     Example:
-    >>> reverse_graph(make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)]))
-    defaultdict(<type 'list'>, {2: [(1, 10)], 3: [(1, 30), (2, 15)]})
+        >>> reverse_graph(make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)]))
+        defaultdict(<type 'list'>, {2: [(1, 10)], 3: [(1, 30), (2, 15)]})
     """
     reversed = defaultdict(list)
     
@@ -145,11 +144,22 @@ def dijkstra(graph, start, end, cost_fn=identity):
         edges.reverse()
         return (cost, edges)
 
-def bidirect_dijkstra(graph, start, end, cost_fn=identity):
+def bidirect_dijkstra(graph, start, end, bwd_graph = None, cost_fn=identity):
     """
-    >>> graph = make_graph([(1, 2, 10.0), (2, 3, 15.0), (1, 3, 30.0)])
-    >>> just_ids(bidirect_dijkstra(graph, 1, 3))
-    (25.0, [1, 2, 3])
+    Bidirectional dijkstra search on directed graph.
+
+    Search from both start and end of the graph reducing search space substantially.
+
+    :param graph: adjacency list of graph
+    :param start: node to start search at
+    :param end: final node
+    :param bwd_graph: reversed graph for backward search
+    :param cost_fn: cost function applied on edges
+
+    Example:    
+        >>> graph = make_graph([(1, 2, 10.0), (2, 3, 15.0), (1, 3, 30.0)])
+        >>> bidirect_dijkstra(graph, 1, 3)
+        (25.0, [(1, 2, 10.0), (2, 3, 15.0)])
     """
     
     fwd_previous = {}
