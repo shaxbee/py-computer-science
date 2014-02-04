@@ -1,7 +1,7 @@
 from future_builtins import zip
 from operator import itemgetter
 from collections import defaultdict
-from heapq import heappush, heappop
+from heapdict import heapdict
 
 def identity(value):
     """
@@ -66,10 +66,10 @@ def dijkstra_kernel(graph, start, previous, cost_fn):
     :param cost_fn: cost function applied for each edge, must be stateless
     """
 
-    queue = [(0.0, start)]
+    queue = heapdict({start: 0.0})
     previous.update({start: (None, 0.0, None)})
     while queue:
-        cost, left = heappop(queue)
+        left, cost = queue.popitem()
         yield left, cost
        
         for right, payload in graph.get(left, []):
@@ -77,7 +77,7 @@ def dijkstra_kernel(graph, start, previous, cost_fn):
             
             # if there was no cost associated or cost is lower
             if right not in previous or alt_cost < previous[right][1]:
-                heappush(queue, (alt_cost, right))
+                queue[right] = alt_cost
                 previous[right] = (left, alt_cost, payload)
 
 def backtrack(previous, start):
