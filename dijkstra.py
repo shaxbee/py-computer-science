@@ -19,13 +19,13 @@ def make_graph(source, edge_factory=identity):
     :returns: adjacency list
     
     Example:
-       >>> make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
-       defaultdict(<type 'list'>, {1: [(2, 10), (3, 30)], 2: [(3, 15)]})
+        >>> make_graph([(1, 2, 10), (2, 3, 15), (1, 3, 30)])
+        defaultdict(<type 'list'>, {1: [(2, 10), (3, 30)], 2: [(3, 15)]})
 
-       >>> from collections import namedtuple
-       >>> EdgeAttrs = namedtuple('EdgeAttrs', 'time distance mode')
-       >>> make_graph([(1, 2, 10, 0.4, 'WALK'), (2, 3, 30, 15, 'BUS'), (1, 3, 15, 30, 'TRAIN')], edge_factory=EdgeAttrs) 
-       defaultdict(<type 'list'>, {1: [(2, EdgeAttrs(time=10, distance=0.4, mode='WALK')), (3, EdgeAttrs(time=15, distance=30, mode='TRAIN'))], 2: [(3, EdgeAttrs(time=30, distance=15, mode='BUS'))]})
+        >>> from collections import namedtuple
+        >>> EdgeAttrs = namedtuple('EdgeAttrs', 'time distance mode')
+        >>> make_graph([(1, 2, 10, 0.4, 'WALK'), (2, 3, 30, 15, 'BUS'), (1, 3, 15, 30, 'TRAIN')], edge_factory=EdgeAttrs) 
+        defaultdict(<type 'list'>, {1: [(2, EdgeAttrs(time=10, distance=0.4, mode='WALK')), (3, EdgeAttrs(time=15, distance=30, mode='TRAIN'))], 2: [(3, EdgeAttrs(time=30, distance=15, mode='BUS'))]})
     """
     graph = defaultdict(list)
     
