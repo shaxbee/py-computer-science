@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    dijkstra
+   bfs
 
 Indices and tables
 ==================
